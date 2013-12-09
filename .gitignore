@@ -1,0 +1,9 @@
+# tests
+test_*
+*.dSYM
+
+# libraries
+*.a
+
+# executables
+deadlink
