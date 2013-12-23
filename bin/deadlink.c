@@ -72,14 +72,15 @@ int crawl_dir(bstring dir_name) {
             bstring path = bstrcpy(dir_name);
             bcatcstr(path, file->d_name);
 
-            if (file->d_type == DT_DIR) {
-                printf("Directory: %s\n", path->data);
-
-                if (rflag) crawl_dir(path);
+            if (file->d_type == DT_DIR && rflag) {
+                if (vflag) printf("Moving into directory: %s\n", path->data);
+                crawl_dir(path);
             } else if (file->d_type == DT_LNK) {
                 // access will return -1 if link points to nothin
                 int link_is_dead = access(path->data, F_OK) == -1;
-                if (link_is_dead) printf("Dead Link: %s\n", path->data);
+                if (link_is_dead) {
+                    if (vflag) printf("Removing link: %s\n", path->data);
+                }
             }
         } while (file != NULL);
 
