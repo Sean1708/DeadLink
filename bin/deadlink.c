@@ -1,17 +1,42 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <bstrlib/bstrlib.h>
 
 
 int crawl_dir(bstring dir_name);
-int file_exists(char* path_name);
 
 
-/* FILE->D_NAME DOES NOT RETURN A PATHNAME WHICH IS CAUSING THE ERROR */
+int rflag = 0;
+int vflag = 0;
+
+
 int main(int argc, char* argv[]) {
-    bstring b = bfromcstr("./tests/");
+    if (argc < 2) {
+        fprintf(stderr, "usage: deadlink [-rv] directory\n");
+        return -1;
+    }
+
+    int opt_ch;
+    do {
+        opt_ch = getopt(argc, argv, "rv");
+
+        if (opt_ch == -1) break;
+
+        switch (opt_ch) {
+            case 'r':
+                // follow directories
+                rflag = 1;
+                break;
+            case 'v':
+                // print names of files and directories before
+                // deleting or moving into them
+                vflag = 1;
+                break;
+        }
+    } while (opt_ch != -1);
+
+    bstring b = bfromcstr(argv[argc - 1]);
     crawl_dir(b);
     bdestroy(b);
     return 0;
@@ -20,9 +45,8 @@ int main(int argc, char* argv[]) {
 
 int crawl_dir(bstring dir_name) {
     // ensure dir_name ends in '/'
-    if (dir_name->data[dir_name->slen] != '/') bconchar(dir_name, '/');
+    if (dir_name->data[dir_name->slen - 1] != '/') bconchar(dir_name, '/');
 
-    fprintf(stderr, "\nEntering crawl_dir()!\n\n");
     // contains files in a directory
     DIR* dir = opendir(dir_name->data);
 
@@ -32,9 +56,12 @@ int crawl_dir(bstring dir_name) {
     if (dir == NULL) {
         fprintf(stderr, "Could not open directory\n\t%s\n", dir_name->data);
     } else {
-        file = readdir(dir);
+        do {
+            file = readdir(dir);
 
-        while (file != NULL) {
+            if (file == NULL) break;
+
+            // ignore current and parent directories
             if (strncmp(file->d_name, ".", 1) == 0 ||
                     strncmp(file->d_name, "..", 2) == 0) {
                 file = readdir(dir);
@@ -46,17 +73,15 @@ int crawl_dir(bstring dir_name) {
             bcatcstr(path, file->d_name);
 
             if (file->d_type == DT_DIR) {
-                printf("Directory: %s\n", file->d_name);
+                printf("Directory: %s\n", path->data);
 
-                crawl_dir(path);
+                if (rflag) crawl_dir(path);
             } else if (file->d_type == DT_LNK) {
                 // access will return -1 if link points to nothin
                 int link_is_dead = access(path->data, F_OK) == -1;
-                if (link_is_dead) printf("Dead Link: %s\n", file->d_name);
+                if (link_is_dead) printf("Dead Link: %s\n", path->data);
             }
-
-            file = readdir(dir);
-        }
+        } while (file != NULL);
 
         closedir(dir);
     }
