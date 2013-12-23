@@ -19,6 +19,10 @@ int main(int argc, char* argv[]) {
 
 
 int crawl_dir(bstring dir_name) {
+    // ensure dir_name ends in '/'
+    if (dir_name->data[dir_name->slen] != '/') bconchar(dir_name, '/');
+
+    fprintf(stderr, "\nEntering crawl_dir()!\n\n");
     // contains files in a directory
     DIR* dir = opendir(dir_name->data);
 
@@ -31,14 +35,21 @@ int crawl_dir(bstring dir_name) {
         file = readdir(dir);
 
         while (file != NULL) {
+            if (strncmp(file->d_name, ".", 1) == 0 ||
+                    strncmp(file->d_name, "..", 2) == 0) {
+                file = readdir(dir);
+                continue;
+            }
+
+            // store path name rather than full file name
+            bstring path = bstrcpy(dir_name);
+            bcatcstr(path, file->d_name);
+
             if (file->d_type == DT_DIR) {
                 printf("Directory: %s\n", file->d_name);
-            } else if (file->d_type == DT_LNK) {
-                // copy directory name
-                bstring path = bstrcpy(dir_name);
-                // store path name rather than full file name
-                bcatcstr(path, file->d_name);
 
+                crawl_dir(path);
+            } else if (file->d_type == DT_LNK) {
                 // access will return -1 if link points to nothin
                 int link_is_dead = access(path->data, F_OK) == -1;
                 if (link_is_dead) printf("Dead Link: %s\n", file->d_name);
