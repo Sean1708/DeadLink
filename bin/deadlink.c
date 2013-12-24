@@ -137,7 +137,7 @@ int crawl_dir(bstring dir_name) {
                     }
 
                     if (DEL) {
-                        if (OPT_VERB) printf("Removing link: %s\n", path->data);
+                        printf("Removing link: %s\n", path->data);
                     } else if (OPT_VERB) {
                         printf("Skipping link: %s\n", path->data);
                     }
