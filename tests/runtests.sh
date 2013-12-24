@@ -13,6 +13,7 @@ cd test_directory
 touch level_one_file
 ln -s level_one_file level_one_link
 ln -s level_one_fake level_one_dead
+ln -s level_one_fake .dotted_dead
 
 mkdir directory
 cd directory

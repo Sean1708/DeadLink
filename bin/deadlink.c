@@ -5,6 +5,19 @@
 
 
 int crawl_dir(bstring dir_name);
+int user_conf(const char* msg, bstring path);
+
+
+static inline int is_parent_current(struct dirent* file) {
+    char* name = file->d_name;
+
+    // compare one more than the length of string to avoid false
+    // positives in dotted files
+    int is_current = strncmp(name, ".", 2) == 0;
+    int is_parent = strncmp(name, "..", 3) == 0;
+
+    return is_current || is_parent;
+}
 
 
 int OPT_CONF = 0;
@@ -53,13 +66,15 @@ int crawl_dir(bstring dir_name) {
     if (dir_name->data[dir_name->slen - 1] != '/') bconchar(dir_name, '/');
 
     // contains files in a directory
-    DIR* dir = opendir(dir_name->data);
+    char* dir_name_cast = (char*) dir_name->data;
+    DIR* dir = opendir(dir_name_cast);
 
     // points to file within a directory
     struct dirent* file = NULL;
 
     if (dir == NULL) {
         fprintf(stderr, "Could not open directory\n\t%s\n", dir_name->data);
+        return -1;
     } else {
         do {
             file = readdir(dir);
@@ -67,8 +82,7 @@ int crawl_dir(bstring dir_name) {
             if (file == NULL) break;
 
             // ignore current and parent directories
-            if (strncmp(file->d_name, ".", 1) == 0 ||
-                    strncmp(file->d_name, "..", 2) == 0) {
+            if (is_parent_current(file)) {
                 file = readdir(dir);
                 continue;
             }
@@ -79,26 +93,10 @@ int crawl_dir(bstring dir_name) {
 
             // if file is a directory and program is being run recursively
             if (file->d_type == DT_DIR && OPT_REC) {
-                int MOVE = 1;  // assume user will confirm/no confirmation
+                int MOVE = 1;
 
                 // if confirmation required
-                if (OPT_CONF) {
-                    // ask for confirmation until the user gets it right
-                    int success = 0;
-                    while (!success) {
-                        printf("Move into %s [y/n]? ", path->data);
-                        int ch = getc(stdin);
-
-                        if (ch == 'y') {
-                            success = 1;
-                        } else if (ch == 'n') {
-                            MOVE = 0;
-                            success = 1;
-                        } else {
-                            printf("Please type 'y' or 'n': ");
-                        }
-                    } 
-                }
+                if (OPT_CONF) MOVE = user_conf("Move into", path);
 
                 // if user decides to move into directory
                 if (MOVE) {
@@ -113,32 +111,17 @@ int crawl_dir(bstring dir_name) {
             // if file is a link
             } else if (file->d_type == DT_LNK) {
                 // access will return -1 if link points to nothin
-                int link_is_dead = access(path->data, F_OK) == -1;
+                char* path_cast = (char*) path->data;
+                int link_is_dead = access(path_cast, F_OK) == -1;
                 if (link_is_dead) {
                     int DEL = 1;  // assume file needs deleting
 
                     // if confirmation required
-                    if (OPT_CONF) {
-                        // ask for confirmation until user gets it right
-                        int success = 0;
-                        while (!success) {
-                            printf("Delete link %s [y/n]? ", path->data);
-                            int ch = getc(stdin);
-
-                            if (ch == 'y') {
-                                success = 1;
-                            } else if (ch == 'n') {
-                                DEL = 0;
-                                success = 1;
-                            } else {
-                                printf("Please type 'y' or 'n': ");
-                            }
-                        }
-                    }
+                    if (OPT_CONF) DEL = user_conf("Delete link", path);
 
                     if (DEL) {
                         printf("Removing link: %s\n", path->data);
-                        unlink(path->data);
+                        unlink(path_cast);
                     } else if (OPT_VERB) {
                         printf("Skipping link: %s\n", path->data);
                     }
@@ -150,4 +133,27 @@ int crawl_dir(bstring dir_name) {
     }
 
     return 0;
+}
+
+int user_conf(const char* msg, bstring path) {
+    printf("%s %s [y/n]? ", msg, path->data);
+
+    int rv = 1;  // assume user will confirm
+    int success = 0;
+    while (!success) {
+        int ch = getc(stdin);
+
+        if (ch == 'y') {
+            rv = 1;
+            success = 1;
+        } else if (ch == 'n') {
+            rv = 0;
+            success = 1;
+        } else {
+            printf("Please type 'y' or 'n': ");
+        }
+    }
+
+
+    return rv;
 }
