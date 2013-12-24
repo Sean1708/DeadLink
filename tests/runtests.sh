@@ -30,11 +30,15 @@ echo "Running without arguments:"
 
 echo ""
 echo "Running without -r:"
-../bin/deadlink -v test_directory
+../bin/deadlink test_directory
+echo "Listing test_directory:"
+ls -R test_directory
 
 echo ""
 echo "Running with -r:"
-../bin/deadlink -rv test_directory
+../bin/deadlink -r test_directory
+echo "Listing test_directory:"
+ls -R test_directory
 
 
 echo ""
