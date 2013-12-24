@@ -23,21 +23,32 @@ static inline int is_parent_current(struct dirent* file) {
 int OPT_CONF = 0;
 int OPT_REC = 0;
 int OPT_VERB = 0;
+char* USAGE = "usage: deadlink [-hirv] directory";
+char* HELP = "options:\n"
+             " -h    print this help message\n"
+             " -i    require conformation before any action\n"
+             " -r    follow any directories found\n"
+             " -v    verbose output\n";
 
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "usage: deadlink [-irv] directory\n");
+        fprintf(stderr, "%s\n", USAGE);
         return -1;
     }
 
     int opt_ch;
     do {
-        opt_ch = getopt(argc, argv, "irv");
+        opt_ch = getopt(argc, argv, "hirv");
 
         if (opt_ch == -1) break;
 
         switch (opt_ch) {
+            case 'h':
+                // print help
+                printf("%s\n\n%s\n", USAGE, HELP);
+                return 0;
+                break;
             case 'i':
                 // ask for conformation
                 OPT_CONF = 1;
@@ -50,6 +61,11 @@ int main(int argc, char* argv[]) {
                 // print names of files and directories before
                 // deleting or moving into them
                 OPT_VERB = 1;
+                break;
+            default:
+                printf("deadlink: illegal option -- %c\n", opt_ch);
+                printf("%s\n", USAGE);
+                return -1;
                 break;
         }
     } while (opt_ch != -1);
